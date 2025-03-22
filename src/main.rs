@@ -1,7 +1,10 @@
+#![windows_subsystem = "windows"]
+
 use winapi::um::{
     winnt::*,
     sysinfoapi::{GetNativeSystemInfo, SYSTEM_INFO, LPSYSTEM_INFO}
 };
+
 
 fn main() {
     unsafe {
@@ -22,6 +25,7 @@ fn main() {
         let exe_dir = std::env::current_dir()
             .expect("Failed to get current directory")
             .join(architecture.expect("Architecture not supported"));
+        
         let mut command = std::process::Command::new(exe_dir.join(cli_arg));
         command.args(args);        
         command.current_dir(exe_dir);
