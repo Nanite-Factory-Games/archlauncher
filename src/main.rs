@@ -1,34 +1,35 @@
 #![windows_subsystem = "windows"]
 
-use winapi::um::{
-    winnt::*,
-    sysinfoapi::{GetNativeSystemInfo, SYSTEM_INFO, LPSYSTEM_INFO}
-};
+use windows::core::BOOL;
+use windows::Win32::System::Threading::GetCurrentProcess;
+use windows::Win32::System::Threading::IsWow64Process;
 
 
 fn main() {
+    let architecture = match is_wow64_process() {
+        true => "aarch64",
+        false => "x86_64",
+    };
+
+    // Get all the arguments after the executable name
+    let mut args = std::env::args();
+    args.next();
+    let cli_arg = args.next().expect("No program name provided");
+    // Execute the program in the folder of the architecture name
+    let exe_dir = std::env::current_dir()
+        .expect("Failed to get current directory")
+        .join(architecture);
+    
+    let mut command = std::process::Command::new(exe_dir.join(cli_arg));
+    command.args(args);        
+    command.current_dir(exe_dir);
+    command.spawn().expect("Failed to execute process");
+}
+
+fn is_wow64_process() -> bool {
     unsafe {
-        let mut system_info: SYSTEM_INFO = std::mem::zeroed();
-        GetNativeSystemInfo(&mut system_info as LPSYSTEM_INFO);
-
-        let architecture = match system_info.u.s().wProcessorArchitecture {
-            PROCESSOR_ARCHITECTURE_AMD64 | PROCESSOR_ARCHITECTURE_INTEL => Some("x86_64"),
-            PROCESSOR_ARCHITECTURE_ARM | PROCESSOR_ARCHITECTURE_ARM64=> Some("aarch64"),
-            _ => None
-        };
-
-        // Get all the arguments after the executable name
-        let mut args = std::env::args();
-        args.next();
-        let cli_arg = args.next().expect("No program name provided");
-        // Execute the program in the folder of the architecture name
-        let exe_dir = std::env::current_dir()
-            .expect("Failed to get current directory")
-            .join(architecture.expect("Architecture not supported"));
-        
-        let mut command = std::process::Command::new(exe_dir.join(cli_arg));
-        command.args(args);        
-        command.current_dir(exe_dir);
-        command.spawn().expect("Failed to execute process");
+        let mut is_wow64: BOOL = BOOL(0);
+        let result = IsWow64Process(GetCurrentProcess(), &mut is_wow64);
+        result.is_ok() && is_wow64.as_bool()
     }
 }
