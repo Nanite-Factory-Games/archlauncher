@@ -1,12 +1,13 @@
 #![windows_subsystem = "windows"]
 
-use windows::core::BOOL;
+use windows::Win32::System::SystemInformation::IMAGE_FILE_MACHINE;
+use windows::Win32::System::SystemInformation::IMAGE_FILE_MACHINE_ARM64;
 use windows::Win32::System::Threading::GetCurrentProcess;
-use windows::Win32::System::Threading::IsWow64Process;
+use windows::Win32::System::Threading::IsWow64Process2;
 
 
 fn main() {
-    let architecture = match is_wow64_process() {
+    let architecture = match is_arm64_process() {
         true => "aarch64",
         false => "x86_64",
     };
@@ -26,10 +27,10 @@ fn main() {
     command.spawn().expect("Failed to execute process");
 }
 
-fn is_wow64_process() -> bool {
+fn is_arm64_process() -> bool {
     unsafe {
-        let mut is_wow64: BOOL = BOOL(0);
-        let result = IsWow64Process(GetCurrentProcess(), &mut is_wow64);
-        result.is_ok() && is_wow64.as_bool()
+        let mut process_machine: IMAGE_FILE_MACHINE = IMAGE_FILE_MACHINE(0);
+        let _ = IsWow64Process2(GetCurrentProcess(), &mut process_machine, None);
+        return process_machine == IMAGE_FILE_MACHINE_ARM64;
     }
 }
